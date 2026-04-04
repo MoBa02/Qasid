@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+{% from "macros.html" import poems_table, pagination %}
+{% block title %}قافية {{ rhyme.pattern }} — القصيد{% endblock %}
+
+{% block main %}
+<div class="page-header fade-in">
+    <h1>قافية {{ rhyme.pattern }}</h1>
+    <p class="subtitle">قصائد على قافية {{ rhyme.pattern }}</p>
+</div>
+
+<div class="container">
+    {{ poems_table(poems) }}
+    {{ pagination('rhyme', page, total_pages, extra_args={'slug': rhyme.slug}) }}
+</div>
+{% endblock %}

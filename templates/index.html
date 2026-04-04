@@ -1,0 +1,51 @@
+{% extends "layout.html" %}
+{% block title %}القصيد — موسوعة الشعر العربي{% endblock %}
+
+{% block main %}
+<!-- Hero -->
+<section class="hero fade-in">
+    <h1 class="hero-title">القصيد</h1>
+    <p class="hero-subtitle">اكتشف روائع الشعر العربي عبر العصور — من الجاهلية إلى العصر الحديث</p>
+
+    <form class="search-box" action="/search" method="GET">
+        <input type="search" name="q" placeholder="ابحث عن قصيدة، شاعر، أو بيت شعر..." aria-label="بحث" />
+        <button type="submit">ابحث</button>
+    </form>
+</section>
+
+<!-- Stats -->
+<section class="stats-row fade-in fade-in-delay-1">
+    <div class="stat-card">
+        <span class="stat-number">{{ "{:,}".format(stats.poems) }}</span>
+        <span class="stat-label">قصيدة</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-number">{{ "{:,}".format(stats.poets) }}</span>
+        <span class="stat-label">شاعر</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-number">{{ stats.meters }}</span>
+        <span class="stat-label">بحر شعري</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-number">{{ stats.themes }}</span>
+        <span class="stat-label">غرض شعري</span>
+    </div>
+</section>
+
+<!-- Featured Poets -->
+<div class="container">
+    <div class="section-header fade-in fade-in-delay-2">
+        <h2>أشهر الشعراء</h2>
+        <p>تصفّح كبار شعراء العربية</p>
+    </div>
+
+    <div class="cards-grid fade-in fade-in-delay-3">
+        {% for poet in poets %}
+        <a href="/poet/{{ poet.slug }}" class="card">
+            <div class="card-title">{{ poet.name }}</div>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

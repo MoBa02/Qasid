@@ -1,0 +1,14 @@
+{% extends "layout.html" %}
+{% from "macros.html" import category_cards %}
+{% block title %}الأغراض الشعرية — القصيد{% endblock %}
+
+{% block main %}
+<div class="page-header">
+    <h1>الأغراض الشعرية</h1>
+    <p class="subtitle">تصنيفات القصائد حسب الغرض الشعري</p>
+</div>
+
+<div class="container">
+    {{ category_cards(themes, 'theme') }}
+</div>
+{% endblock %}

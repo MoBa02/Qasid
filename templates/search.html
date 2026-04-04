@@ -1,0 +1,93 @@
+{% extends "layout.html" %}
+{% block title %}بحث: {{ q }} — القصيد{% endblock %}
+
+{% block main %}
+<div class="page-header">
+    <h1>نتائج البحث</h1>
+    {% if q %}
+        <p class="subtitle">نتائج البحث عن «{{ q }}»</p>
+    {% endif %}
+</div>
+
+<div class="container">
+    <!-- Search box -->
+    <form class="search-box mb-3" action="/search" method="GET" style="max-width: 560px; margin: 0 auto 2.5rem auto;">
+        <input type="search" name="q" value="{{ q }}" placeholder="ابحث عن قصيدة، شاعر، أو بيت شعر..." aria-label="بحث" />
+        <button type="submit">ابحث</button>
+    </form>
+
+    {% if not q %}
+        <div class="empty-state">
+            <p>أدخل كلمة للبحث في القصائد والشعراء والأبيات</p>
+        </div>
+    {% else %}
+        <!-- Poets Results -->
+        {% if poets %}
+        <div class="search-section">
+            <h3>الشعراء ({{ poets|length }})</h3>
+            <div class="cards-grid" style="padding-bottom: 1rem;">
+                {% for poet in poets %}
+                <a href="/poet/{{ poet.slug }}" class="card">
+                    <div class="card-title">{{ poet.name }}</div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Poems Results -->
+        {% if poems %}
+        <div class="search-section">
+            <h3>القصائد ({{ poems|length }})</h3>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>عنوان القصيدة</th>
+                        <th>الشاعر</th>
+                        <th>البحر</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for poem in poems %}
+                    <tr>
+                        <td><a href="/poem/{{ poem.slug }}">{{ poem.title }}</a></td>
+                        <td>{{ poem.poets.name if poem.poets else '—' }}</td>
+                        <td>{{ poem.meters.name if poem.meters else '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <!-- Content Matches (found inside verse text) -->
+        {% if content_matches %}
+        <div class="search-section">
+            <h3>نتائج داخل الأبيات ({{ content_matches|length }})</h3>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>عنوان القصيدة</th>
+                        <th>الشاعر</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for poem in content_matches %}
+                    <tr>
+                        <td><a href="/poem/{{ poem.slug }}">{{ poem.title }}</a></td>
+                        <td>{{ poem.poets.name if poem.poets else '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        {% if not poets and not poems and not content_matches %}
+        <div class="empty-state">
+            <p>لم يتم العثور على نتائج لـ «{{ q }}»</p>
+        </div>
+        {% endif %}
+    {% endif %}
+</div>
+{% endblock %}

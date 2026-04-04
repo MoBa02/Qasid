@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+{% from "macros.html" import poems_table, pagination %}
+{% block title %}{{ meter.name }} — القصيد{% endblock %}
+
+{% block main %}
+<div class="page-header fade-in">
+    <h1>{{ meter.name }}</h1>
+    <p class="subtitle">قصائد على بحر {{ meter.name }}</p>
+</div>
+
+<div class="container">
+    {{ poems_table(poems) }}
+    {{ pagination('meter', page, total_pages, extra_args={'slug': meter.slug}) }}
+</div>
+{% endblock %}

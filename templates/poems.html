@@ -1,0 +1,58 @@
+{% extends "layout.html" %}
+{% from "macros.html" import poems_table, pagination %}
+{% block title %}القصائد — القصيد{% endblock %}
+
+{% block main %}
+<div class="page-header">
+    <h1>القصائد</h1>
+    <p class="subtitle">تصفّح جميع القصائد العربية</p>
+</div>
+
+<div class="container">
+    <div class="listing-layout">
+        <!-- Filter Sidebar -->
+        <aside class="filter-sidebar">
+            <h3>تصفية النتائج</h3>
+            <form action="/poems" method="GET">
+                <div class="filter-group">
+                    <label for="meter">البحر</label>
+                    <select id="meter" name="meter">
+                        <option value="">الكل</option>
+                        {% for m in meters %}
+                            <option value="{{ m.id }}" {% if current_meter == m.id|string %}selected{% endif %}>{{ m.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="rhyme">القافية</label>
+                    <select id="rhyme" name="rhyme">
+                        <option value="">الكل</option>
+                        {% for r in rhymes %}
+                            <option value="{{ r.id }}" {% if current_rhyme == r.id|string %}selected{% endif %}>{{ r.pattern }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="theme">الغرض</label>
+                    <select id="theme" name="theme">
+                        <option value="">الكل</option>
+                        {% for t in themes %}
+                            <option value="{{ t.id }}" {% if current_theme == t.id|string %}selected{% endif %}>{{ t.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <button type="submit" class="filter-btn">تصفية</button>
+            </form>
+        </aside>
+
+        <!-- Poems Table -->
+        <div class="listing-content">
+            {{ poems_table(poems) }}
+            {{ pagination('poems', page, total_pages) }}
+        </div>
+    </div>
+</div>
+{% endblock %}

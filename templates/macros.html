@@ -1,0 +1,85 @@
+{# ── Reusable Jinja2 Macros ── #}
+
+{# ── Poems Table ── #}
+{% macro poems_table(poems, show_poet=true, show_meter=true, show_theme=true) %}
+{% if poems %}
+<table class="data-table">
+    <thead>
+        <tr>
+            <th>رقم</th>
+            <th>عنوان القصيدة</th>
+            {% if show_poet %}<th>الشاعر</th>{% endif %}
+            {% if show_meter %}<th>البحر</th>{% endif %}
+            {% if show_theme %}<th>الغرض</th>{% endif %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for poem in poems %}
+        <tr>
+            <td class="row-num">{{ poem.id - 16 }}</td>
+            <td><a href="/poem/{{ poem.slug }}">{{ poem.title }}</a></td>
+            {% if show_poet %}<td>{{ poem.poets.name if poem.poets else '—' }}</td>{% endif %}
+            {% if show_meter %}<td>{{ poem.meters.name if poem.meters else '—' }}</td>{% endif %}
+            {% if show_theme %}<td>{{ poem.themes.name if poem.themes else '—' }}</td>{% endif %}
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<div class="empty-state">
+    <p>لا توجد نتائج</p>
+</div>
+{% endif %}
+{% endmacro %}
+
+
+{# ── Pagination ── #}
+{% macro pagination(endpoint, page, total_pages, extra_args={}) %}
+<div class="pagination-bar">
+    {% if page > 1 %}
+        <a href="{{ url_for(endpoint, page=page-1, **extra_args) }}">السابق</a>
+    {% endif %}
+
+    {% set start_page = [1, page - 2] | max %}
+    {% set end_page = [total_pages, page + 2] | min %}
+
+    {% if start_page > 1 %}
+        <a href="{{ url_for(endpoint, page=1, **extra_args) }}">1</a>
+        {% if start_page > 2 %}<span class="page-info">…</span>{% endif %}
+    {% endif %}
+
+    {% for p in range(start_page, end_page + 1) %}
+        {% if p == page %}
+            <span class="current">{{ p }}</span>
+        {% else %}
+            <a href="{{ url_for(endpoint, page=p, **extra_args) }}">{{ p }}</a>
+        {% endif %}
+    {% endfor %}
+
+    {% if end_page < total_pages %}
+        {% if end_page < total_pages - 1 %}<span class="page-info">…</span>{% endif %}
+        <a href="{{ url_for(endpoint, page=total_pages, **extra_args) }}">{{ total_pages }}</a>
+    {% endif %}
+
+    {% if page < total_pages %}
+        <a href="{{ url_for(endpoint, page=page+1, **extra_args) }}">التالي</a>
+    {% endif %}
+
+    <span class="page-info">صفحة {{ page }} من {{ total_pages }}</span>
+</div>
+{% endmacro %}
+
+
+{# ── Category Cards ── #}
+{% macro category_cards(items, url_prefix, label_field="name", count_label="قصيدة") %}
+<div class="cards-grid">
+    {% for item in items %}
+    <a href="/{{ url_prefix }}/{{ item.slug }}" class="card">
+        <div class="card-title">{{ item[label_field] }}</div>
+        {% if item.poem_count is defined %}
+        <div class="card-meta">{{ item.poem_count }} {{ count_label }}</div>
+        {% endif %}
+    </a>
+    {% endfor %}
+</div>
+{% endmacro %}

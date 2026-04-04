@@ -1,0 +1,7 @@
+flask
+flask-session
+flask-compress
+supabase
+python-dotenv
+pandas
+google-genai

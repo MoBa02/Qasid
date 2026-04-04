@@ -1,0 +1,14 @@
+{% extends "layout.html" %}
+{% from "macros.html" import category_cards %}
+{% block title %}البحور الشعرية — القصيد{% endblock %}
+
+{% block main %}
+<div class="page-header">
+    <h1>البحور الشعرية</h1>
+    <p class="subtitle">بحور الشعر العربي الستة عشر وما يتفرع عنها</p>
+</div>
+
+<div class="container">
+    {{ category_cards(meters, 'meter') }}
+</div>
+{% endblock %}

@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="{% block description %}القصيد — موسوعة الشعر العربي{% endblock %}" />
+
+    <title>{% block title %}القصيد{% endblock %}</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+
+    <link href="/static/styles.css" rel="stylesheet" />
+  </head>
+
+  <body>
+    <nav class="site-navbar">
+      <a href="/" class="brand">القصيد</a>
+      <button class="nav-toggle" onclick="document.querySelector('.nav-links').classList.toggle('open')" aria-label="القائمة">☰</button>
+      <ul class="nav-links">
+        <li><a href="/">الرئيسية</a></li>
+        <li><a href="/poems">القصائد</a></li>
+        <li><a href="/poets">الشعراء</a></li>
+        <li><a href="/meters">البحور</a></li>
+        <li><a href="/rhymes">القوافي</a></li>
+        <li><a href="/themes">الأغراض</a></li>
+      </ul>
+    </nav>
+
+    <main>{% block main %}{% endblock %}</main>
+
+    <footer class="site-footer">
+      <p>القصيد — موسوعة الشعر العربي</p>
+    </footer>
+  </body>
+</html>

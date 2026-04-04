@@ -1,0 +1,73 @@
+{% extends "layout.html" %}
+{% block title %}{{ poem.title }} — القصيد{% endblock %}
+{% block description %}{{ poem.title }} — {{ poem.poets.name }}{% endblock %}
+
+{% block main %}
+<div class="container" style="max-width: 860px;">
+    <!-- Poem Header -->
+    <div class="poem-header fade-in">
+        <h1 class="poem-title">{{ poem.title }}</h1>
+        <a href="/poet/{{ poem.poets.slug }}" class="poet-name">{{ poem.poets.name }}</a>
+        <div class="poem-meta">
+            {% if poem.meters %}<span class="badge-meta">{{ poem.meters.name }}</span>{% endif %}
+            {% if poem.rhymes %}<span class="badge-meta">قافية {{ poem.rhymes.pattern }}</span>{% endif %}
+            {% if poem.poets.eras %}<span class="badge-meta">{{ poem.poets.eras.name }}</span>{% endif %}
+        </div>
+        <hr class="poem-divider" />
+    </div>
+
+    <!-- Verses -->
+    <div class="verses-wrapper fade-in fade-in-delay-1">
+        {% for i in range(0, (verses | length), 2) %}
+            <div class="verse-row">
+                <span class="hemistich">{{ verses[i] }}</span>
+                {% if i + 1 < verses | length %}
+                    <span class="hemistich">{{ verses[i + 1] }}</span>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Gemini Explanation -->
+    <div class="explain-section fade-in fade-in-delay-2">
+        <button id="explain-btn" class="btn-explain" onclick="explainPoem()">
+            ✨ اشرح القصيدة بالذكاء الاصطناعي
+        </button>
+        <div id="explanation" class="explanation-box"></div>
+    </div>
+</div>
+
+<script>
+async function explainPoem() {
+    const btn = document.getElementById('explain-btn');
+    const box = document.getElementById('explanation');
+
+    btn.textContent = 'جارٍ التحليل...';
+    btn.disabled = true;
+    btn.classList.add('loading');
+    box.style.display = 'block';
+    box.innerHTML = '<div class="loading-dots"><span></span><span></span><span></span></div><p class="loading-text">يتم تحليل القصيدة بالذكاء الاصطناعي...</p>';
+
+    try {
+        const res = await fetch('/api/explain/{{ poem.slug }}', { method: 'POST' });
+        const data = await res.json();
+
+        if (data.explanation) {
+            // Convert markdown-like formatting to HTML
+            let html = data.explanation
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\n/g, '<br>');
+            box.innerHTML = html;
+        } else {
+            box.innerHTML = '<p class="error-text">' + (data.error || 'حدث خطأ غير متوقع') + '</p>';
+        }
+    } catch (e) {
+        box.innerHTML = '<p class="error-text">حدث خطأ في الاتصال</p>';
+    }
+
+    btn.textContent = '✨ اشرح القصيدة بالذكاء الاصطناعي';
+    btn.disabled = false;
+    btn.classList.remove('loading');
+}
+</script>
+{% endblock %}

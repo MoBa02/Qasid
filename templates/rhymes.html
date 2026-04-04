@@ -1,0 +1,14 @@
+{% extends "layout.html" %}
+{% from "macros.html" import category_cards %}
+{% block title %}القوافي — القصيد{% endblock %}
+
+{% block main %}
+<div class="page-header">
+    <h1>القوافي</h1>
+    <p class="subtitle">تصفّح القصائد حسب حرف القافية</p>
+</div>
+
+<div class="container">
+    {{ category_cards(rhymes, 'rhyme', label_field='pattern') }}
+</div>
+{% endblock %}

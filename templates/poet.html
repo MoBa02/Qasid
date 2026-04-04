@@ -1,0 +1,17 @@
+{% extends "layout.html" %}
+{% from "macros.html" import poems_table, pagination %}
+{% block title %}{{ poet.name }} — القصيد{% endblock %}
+
+{% block main %}
+<div class="poet-profile fade-in">
+    <h1>{{ poet.name }}</h1>
+    {% if poet.eras %}
+        <span class="era-badge">{{ poet.eras.name }}</span>
+    {% endif %}
+</div>
+
+<div class="container">
+    {{ poems_table(poems, show_poet=false) }}
+    {{ pagination('poet', page, total_pages, extra_args={'slug': poet.slug}) }}
+</div>
+{% endblock %}
