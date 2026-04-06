@@ -1,6 +1,5 @@
 import os
-from flask import Flask, flash, redirect, render_template, request, session, abort, url_for, jsonify
-from flask_session import Session
+from flask import Flask, render_template, request, abort, jsonify
 from flask_compress import Compress
 from supabase import create_client, Client
 from dotenv import load_dotenv
@@ -34,6 +33,22 @@ def cached_query(key, query_fn, ttl=3600):
     _cache[key] = {"data": data, "time": now}
     return data
 
+from functools import wraps
+def cache_page(ttl=86400):
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            qs = request.query_string.decode('utf-8')
+            key = f"page_{request.path}_{qs}"
+            now = time.time()
+            if key in _cache and now - _cache[key]["time"] < ttl:
+                return _cache[key]["data"]
+            response = f(*args, **kwargs)
+            _cache[key] = {"data": response, "time": now}
+            return response
+        return decorated_function
+    return decorator
+
 # ── Helpers ──────────────────────────────────────────────
 
 def paginate(query, page, per_page=20):
@@ -48,15 +63,15 @@ def paginate(query, page, per_page=20):
 
 def get_counts():
     """Return total poems, poets, meters, themes counts for homepage stats."""
-    poems_count = supabase.table("poems").select("id", count="exact").limit(1).execute()
-    poets_count = supabase.table("poets").select("id", count="exact").limit(1).execute()
-    meters_count = supabase.table("meters").select("id", count="exact").limit(1).execute()
-    themes_count = supabase.table("themes").select("id", count="exact").limit(1).execute()
+    poems_count = supabase.table("poems").select("id", count="exact").limit(0).execute()
+    poets_count = supabase.table("poets").select("id", count="exact").limit(0).execute()
+    meters_count = supabase.table("meters").select("id", count="exact").limit(0).execute()
+    themes_count = supabase.table("themes").select("id", count="exact").limit(0).execute()
     return {
-        "poems": poems_count.count if poems_count.count else 0,
-        "poets": poets_count.count if poets_count.count else 0,
-        "meters": meters_count.count if meters_count.count else 0,
-        "themes": themes_count.count if themes_count.count else 0,
+        "poems": poems_count.count if hasattr(poems_count, 'count') and poems_count.count else 0,
+        "poets": poets_count.count if hasattr(poets_count, 'count') and poets_count.count else 0,
+        "meters": meters_count.count if hasattr(meters_count, 'count') and meters_count.count else 0,
+        "themes": themes_count.count if hasattr(themes_count, 'count') and themes_count.count else 0,
     }
 
 
@@ -73,6 +88,7 @@ def add_cache_headers(response):
 # ── Routes ───────────────────────────────────────────────
 
 @app.route("/")
+@cache_page(ttl=3600)
 def index():
     response = supabase.table("poets").select("id, name, slug").limit(6).execute()
     poets = response.data
@@ -81,6 +97,7 @@ def index():
 
 
 @app.route("/poems")
+@cache_page(ttl=86400)
 def poems():
     page = request.args.get("page", 1, type=int)
     per_page = 20
@@ -125,6 +142,7 @@ def poems():
 
 
 @app.route("/poets")
+@cache_page(ttl=86400)
 def poets():
     page = request.args.get("page", 1, type=int)
     per_page = 20
@@ -134,6 +152,7 @@ def poets():
 
 
 @app.route("/poem/<slug>")
+@cache_page(ttl=86400)
 def poem(slug):
     response = supabase.table("poems").select(
         "content, title, slug, meters(name), rhymes(pattern), poets(name, slug, eras(name))"
@@ -148,6 +167,7 @@ def poem(slug):
 
 
 @app.route("/poet/<slug>")
+@cache_page(ttl=86400)
 def poet(slug):
     page = request.args.get("page", 1, type=int)
     per_page = 20
@@ -166,6 +186,7 @@ def poet(slug):
 
 
 @app.route("/meter/<slug>")
+@cache_page(ttl=86400)
 def meter(slug):
     page = request.args.get("page", 1, type=int)
     per_page = 20
@@ -184,12 +205,14 @@ def meter(slug):
 
 
 @app.route("/meters")
+@cache_page(ttl=86400)
 def meters():
     meters = cached_query("meters", lambda: supabase.table("meters").select("id, name, slug, poem_count").execute().data)
     return render_template("meters.html", meters=meters)
 
 
 @app.route("/rhyme/<slug>")
+@cache_page(ttl=86400)
 def rhyme(slug):
     page = request.args.get("page", 1, type=int)
     per_page = 20
@@ -208,12 +231,14 @@ def rhyme(slug):
 
 
 @app.route("/rhymes")
+@cache_page(ttl=86400)
 def rhymes():
     rhymes = cached_query("rhymes", lambda: supabase.table("rhymes").select("id, pattern, slug, poem_count").execute().data)
     return render_template("rhymes.html", rhymes=rhymes)
 
 
 @app.route("/theme/<slug>")
+@cache_page(ttl=86400)
 def theme(slug):
     page = request.args.get("page", 1, type=int)
     per_page = 20
@@ -232,6 +257,7 @@ def theme(slug):
 
 
 @app.route("/themes")
+@cache_page(ttl=86400)
 def themes():
     themes = cached_query("themes", lambda: supabase.table("themes").select("id, name, slug, poem_count").execute().data)
     return render_template("themes.html", themes=themes)
@@ -240,37 +266,31 @@ def themes():
 @app.route("/search")
 def search():
     q = request.args.get("q", "").strip()
+    # Strip away the text search completely. Can you read ANY data?
+    test_response = supabase.table('poems').select('*').limit(3).execute()
+    print("RLS Test Data:", test_response.data)
     if not q:
         return render_template("search.html", q="", poems=[], poets=[], content_matches=[])
 
-    # Search poems by title (fast — title is a short column)
+    # Search poems via new RPC endpoint (handles correct Arabic normalization)
     try:
-        poems_res = supabase.table("poems").select(
-            "id, title, slug, poets(name), meters(name)"
-        ).ilike("title", f"%{q}%").limit(20).execute()
+        poems_res = supabase.rpc(
+            "search_poems", {"search_term": q}
+        ).select("id, title, slug, poets(name), meters(name)").limit(30).execute()
         poems_data = poems_res.data
-    except Exception:
+    except Exception as e:
+        print("RPC Search Error:", e)
         poems_data = []
 
-    # Search poets by name (fast — name is a short column)
     try:
         poets_res = supabase.table("poets").select(
             "id, name, slug"
-        ).ilike("name", f"%{q}%").limit(20).execute()
+        ).text_search("search_vector", q, type="websearch", config="simple").limit(20).execute()
         poets_data = poets_res.data
-    except Exception:
+    except Exception as e:
         poets_data = []
 
-    # Search inside poem content (may timeout on large datasets — that's OK)
     content_matches = []
-    try:
-        content_res = supabase.table("poems").select(
-            "id, title, slug, poets(name)"
-        ).ilike("content", f"%{q}%").limit(10).execute()
-        title_ids = {p["id"] for p in poems_data}
-        content_matches = [p for p in content_res.data if p["id"] not in title_ids]
-    except Exception:
-        pass
 
     return render_template(
         "search.html",
