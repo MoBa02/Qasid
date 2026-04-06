@@ -1,6 +1,7 @@
 import os
 from flask import Flask, render_template, request, abort, jsonify
 from flask_compress import Compress
+from flask_caching import Cache
 from supabase import create_client, Client
 from dotenv import load_dotenv
 import math
@@ -17,37 +18,16 @@ supabase: Client = create_client(
 
 client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
+config = {
+    "DEBUG": True,          # some Flask specific configs
+    "CACHE_TYPE": "SimpleCache",  # Flask-Caching related configs
+    "CACHE_DEFAULT_TIMEOUT": 300
+}
+
 app = Flask(__name__)
+app.config.from_mapping(config)
 Compress(app)
-
-# ── Cache ────────────────────────────────────────────────
-
-_cache = {}
-
-def cached_query(key, query_fn, ttl=3600):
-    """Cache a Supabase query result in memory for `ttl` seconds (default 1 hour)."""
-    now = time.time()
-    if key in _cache and now - _cache[key]["time"] < ttl:
-        return _cache[key]["data"]
-    data = query_fn()
-    _cache[key] = {"data": data, "time": now}
-    return data
-
-from functools import wraps
-def cache_page(ttl=86400):
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            qs = request.query_string.decode('utf-8')
-            key = f"page_{request.path}_{qs}"
-            now = time.time()
-            if key in _cache and now - _cache[key]["time"] < ttl:
-                return _cache[key]["data"]
-            response = f(*args, **kwargs)
-            _cache[key] = {"data": response, "time": now}
-            return response
-        return decorated_function
-    return decorator
+cache = Cache(app)
 
 # ── Helpers ──────────────────────────────────────────────
 
@@ -61,6 +41,7 @@ def paginate(query, page, per_page=20):
     return response.data, total_pages
 
 
+@cache.memoize(timeout=3600)
 def get_counts():
     """Return total poems, poets, meters, themes counts for homepage stats."""
     poems_count = supabase.table("poems").select("id", count="exact").limit(0).execute()
@@ -88,16 +69,16 @@ def add_cache_headers(response):
 # ── Routes ───────────────────────────────────────────────
 
 @app.route("/")
-@cache_page(ttl=3600)
+@cache.cached(timeout=3600)
 def index():
     response = supabase.table("poets").select("id, name, slug").limit(6).execute()
     poets = response.data
-    stats = cached_query("homepage_stats", get_counts, ttl=3600)
+    stats = get_counts()
     return render_template("index.html", poets=poets, stats=stats)
 
 
 @app.route("/poems")
-@cache_page(ttl=86400)
+@cache.cached(timeout=3600, query_string=True)
 def poems():
     page = request.args.get("page", 1, type=int)
     per_page = 20
@@ -122,10 +103,10 @@ def poems():
 
     poems_data, total_pages = paginate(query, page, per_page)
 
-    # Fetch filter options (cached — these rarely change)
-    meters_list = cached_query("filter_meters", lambda: supabase.table("meters").select("id, name").execute().data)
-    themes_list = cached_query("filter_themes", lambda: supabase.table("themes").select("id, name").execute().data)
-    rhymes_list = cached_query("filter_rhymes", lambda: supabase.table("rhymes").select("id, pattern").execute().data)
+    # Fetch filter options (memoized because they rarely change)
+    meters_list = supabase.table("meters").select("id, name").execute().data
+    themes_list = supabase.table("themes").select("id, name").execute().data
+    rhymes_list = supabase.table("rhymes").select("id, pattern").execute().data
 
     return render_template(
         "poems.html",
@@ -142,7 +123,7 @@ def poems():
 
 
 @app.route("/poets")
-@cache_page(ttl=86400)
+@cache.cached(timeout=3600, query_string=True)
 def poets():
     page = request.args.get("page", 1, type=int)
     per_page = 20
@@ -152,7 +133,7 @@ def poets():
 
 
 @app.route("/poem/<slug>")
-@cache_page(ttl=86400)
+@cache.cached(timeout=86400)
 def poem(slug):
     response = supabase.table("poems").select(
         "content, title, slug, meters(name), rhymes(pattern), poets(name, slug, eras(name))"
@@ -167,7 +148,7 @@ def poem(slug):
 
 
 @app.route("/poet/<slug>")
-@cache_page(ttl=86400)
+@cache.cached(timeout=3600, query_string=True)
 def poet(slug):
     page = request.args.get("page", 1, type=int)
     per_page = 20
@@ -186,7 +167,7 @@ def poet(slug):
 
 
 @app.route("/meter/<slug>")
-@cache_page(ttl=86400)
+@cache.cached(timeout=3600, query_string=True)
 def meter(slug):
     page = request.args.get("page", 1, type=int)
     per_page = 20
@@ -205,14 +186,14 @@ def meter(slug):
 
 
 @app.route("/meters")
-@cache_page(ttl=86400)
+@cache.cached(timeout=3600)
 def meters():
-    meters = cached_query("meters", lambda: supabase.table("meters").select("id, name, slug, poem_count").execute().data)
+    meters = supabase.table("meters").select("id, name, slug, poem_count").execute().data
     return render_template("meters.html", meters=meters)
 
 
 @app.route("/rhyme/<slug>")
-@cache_page(ttl=86400)
+@cache.cached(timeout=3600, query_string=True)
 def rhyme(slug):
     page = request.args.get("page", 1, type=int)
     per_page = 20
@@ -231,14 +212,14 @@ def rhyme(slug):
 
 
 @app.route("/rhymes")
-@cache_page(ttl=86400)
+@cache.cached(timeout=3600)
 def rhymes():
-    rhymes = cached_query("rhymes", lambda: supabase.table("rhymes").select("id, pattern, slug, poem_count").execute().data)
+    rhymes = supabase.table("rhymes").select("id, pattern, slug, poem_count").execute().data
     return render_template("rhymes.html", rhymes=rhymes)
 
 
 @app.route("/theme/<slug>")
-@cache_page(ttl=86400)
+@cache.cached(timeout=3600, query_string=True)
 def theme(slug):
     page = request.args.get("page", 1, type=int)
     per_page = 20
@@ -257,18 +238,15 @@ def theme(slug):
 
 
 @app.route("/themes")
-@cache_page(ttl=86400)
+@cache.cached(timeout=3600)
 def themes():
-    themes = cached_query("themes", lambda: supabase.table("themes").select("id, name, slug, poem_count").execute().data)
+    themes = supabase.table("themes").select("id, name, slug, poem_count").execute().data
     return render_template("themes.html", themes=themes)
 
 
 @app.route("/search")
 def search():
     q = request.args.get("q", "").strip()
-    # Strip away the text search completely. Can you read ANY data?
-    test_response = supabase.table('poems').select('*').limit(3).execute()
-    print("RLS Test Data:", test_response.data)
     if not q:
         return render_template("search.html", q="", poems=[], poets=[], content_matches=[])
 

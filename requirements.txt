@@ -3,3 +3,4 @@ flask-compress
 supabase
 python-dotenv
 google-genai
+Flask-Caching
